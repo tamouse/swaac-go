@@ -1,9 +1,12 @@
 {
   "name": "swaac-go",
   "version": "0.1.0",
-  "description": "# Yet another swaac site, this time in HUGO",
+  "description": "Yet another swaac site, this time in HUGO",
   "main": "index.js",
   "author": "Tamara Temple <tamouse@gmail.com> (https://github.com/tamouse)",
   "license": "MIT",
-  "private": true
+  "private": true,
+  "scripts": {
+    "start": "(cd swaac ; hugo server -D)"
+  }
 }

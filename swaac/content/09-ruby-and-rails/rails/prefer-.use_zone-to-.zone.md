@@ -1,0 +1,70 @@
+---
+title: "Prefer .use_zone to .zone"
+date: 2020-01-11T07:46:26-06:00
+draft: true
+---
+
+*A Rails better practice for dealing with altering the current process's timezone*
+
+I had thought to write a post on this, but never got around to it.
+
+[Prathamesh Sonpatki](https://prathamesh.tech/) [beat me to it :\)](https://prathamesh.tech/2019/07/11/use-time-use_zone-to-navigate-timezone/)
+
+Essentially, this is the practice I use:
+
+```ruby
+Time.use_zone(current_user.timezone) do 
+  # Do Time and DateTime operations under the auspices of the
+  # current user's timezone setting.
+  
+  Time.current # The current time in the current user's timezone
+  Time.zone.now # Equivalent to the above
+end
+```
+
+It's better than just supposing that `Time.zone` has been set somewhere in the current process, **or** that `Time.zone` has been set to what the code in the block _expects it to be!_
+
+### In Testing
+
+The biggest source of error that I've encountered for this isn't in requests, but actually in the spec test cases for the product I've been working on. Some test cases blythely set `Time.zone` in a before action, but never reset it in an after action.
+
+#### Wrong! ####
+
+``` ruby
+before(:each) do
+  @account = Fabricate(:account)
+  Time.zone = @account.timezone
+end
+
+# NO AFTER BLOCK TO RESET TIME ZONE!!
+```
+
+This has been a source of intermittent false negatives during continuous integration, and a real pain in the rear to figure out which test is causing the issue. It's never the one presenting the false negatives, it's something that ran randomly prior to that one.
+
+#### Correct ####
+
+If possible, wrap the time zone use inside an `around` action:
+
+```ruby
+around(:each) do |example|
+  Time.use_zone(some_timezone) do
+    yield example
+  end
+end
+```
+
+#### With [Timecop](https://github.com/travisjeffery/timecop)
+
+Since Timecop is essentially mocking the system clock, you can use it with `.use_zone` with impunity.
+
+```ruby
+around do |example|
+  Timecop.freeze do
+    @account = Fabricate(:account)
+    Time.use_zone(account.timezone) do
+      yield example
+    end
+  end
+end
+```
+
